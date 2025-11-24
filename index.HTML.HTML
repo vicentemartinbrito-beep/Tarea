@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz: Riesgos Ambientales</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e0f7fa; /* Un color azul claro "limpio" */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .quiz-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 700px;
+            padding: 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* NUEVO: Estilo para el contador */
+        #counter-display {
+            font-size: 18px;
+            color: #00796b;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #question-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #timer-display {
+            font-size: 22px;
+            font-weight: bold;
+            color: #d32f2f;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button.option-btn {
+            padding: 15px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #0288d1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button.option-btn:hover {
+            background-color: #01579b;
+            transform: scale(1.01);
+        }
+        
+        button.option-btn:disabled {
+            background-color: #b0bec5;
+            cursor: not-allowed;
+        }
+
+        /* MODAL PERSONALIZADO */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: popIn 0.3s ease;
+        }
+
+        .btn-modal {
+            padding: 10px 25px;
+            font-size: 16px;
+            background: #388e3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <div id="counter-display">Pregunta 1 de 10</div>
+
+        <div id="question-text">Cargando...</div>
+        <div id="timer-display">Tiempo: 15</div>
+
+        <div class="options-container">
+            <button class="option-btn" onclick="verificarRespuesta(0)" id="btn0">Opción A</button>
+            <button class="option-btn" onclick="verificarRespuesta(1)" id="btn1">Opción B</button>
+            <button class="option-btn" onclick="verificarRespuesta(2)" id="btn2">Opción C</button>
+        </div>
+    </div>
+
+    <div id="custom-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title" style="margin-top:0">Título</h2>
+            <p id="modal-body">Mensaje</p>
+            <button id="modal-btn" class="btn-modal" onclick="cerrarModal()">Siguiente ➜</button>
+        </div>
+    </div>
+
+<script>
+    // 1. DATOS DEL QUIZ (Extraídos de tus documentos de Riesgos Físicos)
+    const preguntas = [
+        "¿Cómo se define el Ruido en el entorno laboral?", // [cite: 2, 84, 149]
+        "¿Qué efecto produce el ruido en el trabajador a largo plazo?", // [cite: 5, 86, 151]
+        "¿Cuáles son los dos tipos de vibraciones que existen?", // [cite: 17, 95, 156]
+        "¿Qué enfermedad causa la vibración mano-brazo?", // [cite: 20, 97, 158]
+        "¿Qué problema ambiental genera la mala iluminación?", // [cite: 37, 110, 167]
+        "¿Cuál de estas radiaciones se considera IONIZANTE?", // [cite: 47, 117, 170]
+        "¿Cuáles son las 3 medidas de protección ante radiaciones?", // [cite: 54-57, 122, 175]
+        "¿Qué factores componen las condiciones termohigrométricas?", // [cite: 62, 128, 177]
+        "¿Qué efecto tiene el 'disconfort térmico' en la empresa?", // [cite: 68, 131, 180]
+        "¿Qué EPI es fundamental para protegerse del ruido?" // [cite: 9, 89, 154]
+    ];
+
+    const opciones = [
+        ["Un sonido agradable", "Un sonido no deseado o molesto", "Una onda electromagnética"],
+        ["Hipoacusia (Sordera)", "Conjuntivitis", "Golpe de calor"],
+        ["Mano-Brazo y Cuerpo Entero", "Alta y Baja frecuencia", "Internas y Externas"],
+        ["Síndrome del túnel carpiano", "Síndrome del dedo blanco", "Hernia discal"],
+        ["Lluvia ácida", "Contaminación lumínica", "Efecto invernadero"],
+        ["Rayos X y Nuclear", "Luz visible", "Radiación Ultravioleta"],
+        ["Casco, Guantes y Botas", "Tiempo, Distancia y Blindaje", "Agua, Aire y Tierra"],
+        ["Temperatura, Humedad y Ventilación", "Luz, Ruido y Vibración", "Presión, Altura y Gravedad"],
+        ["Aumento de producción", "Baja productividad y errores", "Mejora la comunicación"],
+        ["Guantes antivibración", "Cascos o tapones auditivos", "Gafas de sol"]
+    ];
+
+    // Respuestas correctas (0, 1, o 2)
+    const correctas = [1, 0, 0, 1, 1, 0, 1, 0, 1, 1];
+
+    // Variables
+    let indicePregunta = 0;
+    let puntuacion = 0;
+    const TIEMPO_LIMITE = 15;
+    let tiempoRestante = TIEMPO_LIMITE;
+    let timerInterval;
+    let juegoTerminado = false;
+
+    // Elementos DOM
+    const lblContador = document.getElementById('counter-display');
+    const lblPregunta = document.getElementById('question-text');
+    const lblTiempo = document.getElementById('timer-display');
+    const btn0 = document.getElementById('btn0');
+    const btn1 = document.getElementById('btn1');
+    const btn2 = document.getElementById('btn2');
+    const modal = document.getElementById('custom-modal');
+
+    function iniciarJuego() {
+        cargarPregunta();
+    }
+
+    function cargarPregunta() {
+        if (indicePregunta < preguntas.length) {
+            // ACTUALIZAR CONTADOR
+            lblContador.innerText = `Pregunta ${indicePregunta + 1} de ${preguntas.length}`;
+
+            // Textos
+            lblPregunta.innerText = preguntas[indicePregunta];
+            btn0.innerText = opciones[indicePregunta][0];
+            btn1.innerText = opciones[indicePregunta][1];
+            btn2.innerText = opciones[indicePregunta][2];
+
+            // Reset Timer
+            tiempoRestante = TIEMPO_LIMITE;
+            lblTiempo.innerText = "Tiempo: " + tiempoRestante;
+            
+            toggleBotones(true);
+            startTimer();
+        } else {
+            mostrarResultadosFinales();
+        }
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            tiempoRestante--;
+            lblTiempo.innerText = "Tiempo: " + tiempoRestante;
+            if (tiempoRestante <= 0) {
+                clearInterval(timerInterval);
+                mostrarModal("¡Tiempo agotado!", "La respuesta se marca como incorrecta.", false);
+            }
+        }, 1000);
+    }
+
+    function verificarRespuesta(seleccion) {
+        clearInterval(timerInterval);
+        const esCorrecta = (seleccion === correctas[indicePregunta]);
+        
+        if (esCorrecta) {
+            puntuacion++;
+            mostrarModal("✔ ¡Correcto!", "Muy bien.", true);
+        } else {
+            const respCorrectaTexto = opciones[indicePregunta][correctas[indicePregunta]];
+            mostrarModal("✘ Incorrecto", "La respuesta correcta era: " + respCorrectaTexto, false);
+        }
+    }
+
+    function toggleBotones(estado) {
+        btn0.disabled = !estado;
+        btn1.disabled = !estado;
+        btn2.disabled = !estado;
+    }
+
+    function mostrarModal(titulo, mensaje, esExito) {
+        document.getElementById('modal-title').innerText = titulo;
+        document.getElementById('modal-title').style.color = esExito ? "#388e3c" : "#d32f2f";
+        document.getElementById('modal-body').innerText = mensaje;
+        modal.style.display = 'flex';
+    }
+
+    function cerrarModal() {
+        modal.style.display = 'none';
+        if (juegoTerminado) {
+            location.reload();
+        } else {
+            indicePregunta++;
+            cargarPregunta();
+        }
+    }
+
+    function mostrarResultadosFinales() {
+        juegoTerminado = true;
+        const aprobado = puntuacion >= 5;
+        const titulo = aprobado ? "¡FELICIDADES!" : "Resultado Final";
+        const mensaje = `Has acertado ${puntuacion} de ${preguntas.length}.\n` + 
+                        (aprobado ? "¡Has aprobado el test de riesgos!" : "Debes repasar el temario.");
+        
+        document.getElementById('modal-btn').innerText = "Reiniciar Test";
+        mostrarModal(titulo, mensaje, aprobado);
+    }
+
+    iniciarJuego();
+</script>
+</body>
+</html>
